@@ -1,5 +1,0 @@
-Session 3
-
-Multi_pop-HW_models 
---- How and why to select different populations
---- Constant Se/Sp over multiple populations, excluding populations to ensure robustness

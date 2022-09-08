@@ -8,7 +8,7 @@ theme: metropolis
 aspectratio: 169
 colortheme: seahorse
 header-includes: 
-  - \input{../rsc/preamble}
+  - \input{preamble}
 params:
   presentation: TRUE
 output:
@@ -18,15 +18,8 @@ output:
   html_document: default
 ---
 
-```{r rendering, eval=FALSE, include=FALSE}
-# To render this as PDF (beamer) slides run:
-rmarkdown::render('Session_2.Rmd', 'beamer_presentation', params=list(presentation=TRUE))
-# And for html:
-rmarkdown::render('Session_2.Rmd', 'html_document', params=list(presentation=FALSE))
-```
-
 ```{r setup, include=FALSE}
-source("../rsc/setup.R", environment())
+source("setup.R")
 ```
 
 ## Hui-Walter Model
