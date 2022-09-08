@@ -8,7 +8,7 @@ theme: metropolis
 aspectratio: 169
 colortheme: seahorse
 header-includes: 
-  - \input{../rsc/preamble}
+  - \input{preamble}
 params:
   presentation: TRUE
 output:
@@ -18,15 +18,8 @@ output:
   html_document: default
 ---
 
-```{r rendering, eval=FALSE, include=FALSE}
-# To render this as PDF (beamer) slides run:
-rmarkdown::render('Session_3.Rmd', 'beamer_presentation', params=list(presentation=TRUE))
-# And for html:
-rmarkdown::render('Session_3.Rmd', 'html_document', params=list(presentation=FALSE))
-```
-
 ```{r setup, include=FALSE}
-source("../rsc/setup.R", local = environment())
+source("setup.R")
 ```
 
 ## Why stop at two tests?
@@ -424,76 +417,6 @@ results <- run.jags('covidmodel.txt', sample=50000)
 results
 ```
 
-## Adding "Bayesian p-values"
-
-What on earth is that?
-
-  - "Bayesian p-values" are effectively the probability that a particular parameter has a positive (or negative) value, i.e. the probability that it is non-zero
-  - The interpretaiton is actually much cleaner than frequentist p-values, so it is probably a bad name for them...
-    
-- - -
-
-Calculation in JAGS code:
-
-```{r echo = FALSE}
-modcod <- readLines("covidmodel.txt")
-inspt <- which(modcod=="	 # covsp23 <- 0  ## if the specificity of these tests can be assumed to be independent")
-stopifnot(length(inspt)==1)
-ntext <- "
-     bpv_cse23 <- covse23 <= 0
-     bpv_csp23 <- covsp23 <= 0
-
-     #monitor# bpv_cse23, bpv_csp23
-"
-modcod <- c(modcod[1:inspt], ntext, modcod[(inspt+1):length(modcod)])
-cat(modcod, file="covidmodel.txt", sep="\n")
-```
-
-```{r echo=FALSE, comment=''}
-cat(ntext)
-```
-
-- - -
-
-The mean estimate for covse23_bpv and covsp23_bpv is the "Bayesian p-value"
-
-```{r}
-results <- run.jags('covidmodel.txt', sample=50000)
-results
-```
-
-- - -
-
-Alternative in R:
-
-```{r}
-cov23 <- combine.mcmc(results, vars=c("covse23", "covsp23"))
-str(cov23)
-apply(cov23 <= 0, 2, mean)
-```
-
-. . .
-
-[Note:  these numbers are not quite the same as the JAGS version, because the thinning used for calculating summary statistics is slightly different between the two]
-
-- - -
-
-Or even:
-
-```{r}
-results <- add.summary(results, mutate = function(x){
-  list(
-    bpvR_covse23 = x[,"covse23"] <= 0,
-    bpvR_covsp23 = x[,"covsp23"] <= 0
-  )
-})
-summary(results, vars="bpv")
-```
-
-. . .
-
-See `?runjags::add.summary` for more information on mutate
-
 
 ## Practical considerations
 
@@ -507,9 +430,299 @@ See `?runjags::add.summary` for more information on mutate
 
 - Only careful consideration of covariance terms can help us with identifiability
 
+
+
+# How to interpret the latent class
+
+
+## What exactly is our latent class?
+
+Think about what exactly the latent class is in these situations:
+
+1. An antigen plus antibody test
+
 . . .
 
-- We will return to these themes tomorrow!
+  * The latent status is probably close to the true disease status
+  
+. . .
+
+2. Two antibody tests 
+
+. . .
+
+  * The latent status is actually 'producing antibodies'
+    * And not 'diseased' !!!
+  
+. . .
+
+- What do we mean by "conditionally independent"?
+
+  * Independent of each other conditional on the latent state
+  * But the latent state is NOT always *disease*
+
+
+## A hierarchy of latent states
+
+
+```{r echo=FALSE, fig.height=4}
+ab_dag <- dagify(
+  infected ~ prevalence,
+  antibodies ~ infected,
+  abtarget ~ antibodies,
+  abtarget2 ~ antibodies,
+  test1 ~ abtarget,
+  test2 ~ abtarget,
+  test3 ~ abtarget2,
+  latent = c("infected", "antibodies", "abtarget","abtarget2"),
+  exposure = "prevalence",
+  outcome = c("test1", "test2", "test3"),
+  labels = c("infected"="Infected", "prevalence"="Prevalence",
+             "antibodies"="Producing Antibodies", "abtarget"="Presence of Target 1","abtarget2"="Presence of Target 2",
+             "test1"="ELISA A", "test2"="ELISA B", "test3"="ELISA C")
+)
+ggdag(ab_dag, text=FALSE, use_labels="label") + theme_dag_blank()
+```
+
+
+## What is sensitivity and specificity?
+
+- The probability of test status conditional on true disease status?
+
+- The probability of test status conditional on the latent state?
+
+. . .
+
+So is the latent state the same as the true disease state?
+
+. . .
+
+Important quote:
+
+"Latent class models involve pulling **something** out of a hat, and deciding to call it a rabbit"
+
+  - Nils Toft
+
+
+
+
+## When should we correct for correlation?
+
+Aims:
+
+- To get you to think about when and why we should try to correct for correlation
+
+- To get you to think about what is NOT achieved by including correlation terms
+
+. . .
+
+Main discussion points for each example:
+
+- What is the latent class
+
+- Which correlation terms should we include and why
+
+
+- - -
+
+```{r echo=FALSE, fig.height=4}
+eg_dag <- dagify(
+  infected ~ prevalence,
+#  antibodies ~ infected,
+#  abtarget ~ antibodies,
+  test1 ~ infected,
+  test2 ~ infected,
+  test3 ~ infected,
+  latent = c("infected"),
+  exposure = "prevalence",
+  outcome = c("test1", "test2", "test3"),
+  labels = c("infected"="Infected", "prevalence"="Prevalence",
+             "antigen"="Pathogen Detectable", "antibodies"="Producing Antibodies", "abtarget"="Presence of Target",
+             "test1"="Test A", "test2"="Test B", "test3"="Test C")
+)
+ggdag(eg_dag, text=FALSE, use_labels="label") + theme_dag_blank()
+```
+
+. . .
+
+- No correlation to model!
+
+- - -
+
+```{r echo=FALSE, fig.height=4}
+eg_dag <- dagify(
+  infected ~ prevalence,
+  antibodies ~ infected,
+#  abtarget ~ antibodies,
+  test1 ~ antibodies,
+  test2 ~ antibodies,
+  test3 ~ antibodies,
+  latent = c("infected","antibodies"),
+  exposure = "prevalence",
+  outcome = c("test1", "test2", "test3"),
+  labels = c("infected"="Infected", "prevalence"="Prevalence",
+             "antigen"="Pathogen Detectable", "antibodies"="Producing Antibodies", "abtarget"="Presence of Target",
+             "test1"="Test A", "test2"="Test B", "test3"="Test C")
+)
+ggdag(eg_dag, text=FALSE, use_labels="label") + theme_dag_blank()
+```
+
+. . .
+
+- No correlation to model ... but "infected" is not the latent class
+
+- - -
+
+```{r echo=FALSE, fig.height=4}
+eg_dag <- dagify(
+  infected ~ prevalence,
+  antibodies ~ infected,
+  abtarget ~ antibodies,
+  test1 ~ abtarget,
+  test2 ~ abtarget,
+  test3 ~ abtarget,
+  latent = c("infected","antibodies","abtarget"),
+  exposure = "prevalence",
+  outcome = c("test1", "test2", "test3"),
+  labels = c("infected"="Infected", "prevalence"="Prevalence",
+             "antigen"="Pathogen Detectable", "antibodies"="Producing Antibodies", "abtarget"="Presence of Target",
+             "test1"="Test A", "test2"="Test B", "test3"="Test C")
+)
+ggdag(eg_dag, text=FALSE, use_labels="label") + theme_dag_blank()
+```
+
+. . .
+
+- Same as above!
+
+
+- - -
+
+```{r echo=FALSE, fig.height=4}
+eg_dag <- dagify(
+  infected ~ prevalence,
+  antigen ~ infected,
+  antibodies ~ infected,
+  abtarget ~ antibodies,
+  test1 ~ antigen,
+  test2 ~ abtarget,
+  test3 ~ abtarget,
+  latent = c("infected","antibodies","abtarget"),
+  exposure = "prevalence",
+  outcome = c("test1", "test2", "test3"),
+  labels = c("infected"="Infected", "prevalence"="Prevalence",
+             "antigen"="Pathogen Detectable", "antibodies"="Producing Antibodies", "abtarget"="Presence of Target",
+             "test1"="Test A", "test2"="Test B", "test3"="Test C")
+)
+ggdag(eg_dag, text=FALSE, use_labels="label") + theme_dag_blank()
+```
+
+. . .
+
+- Tests B and C are correlated
+
+- - -
+
+```{r echo=FALSE, fig.height=4}
+eg_dag <- dagify(
+  infected ~ prevalence,
+  antigen ~ infected,
+  antibodies ~ infected,
+  abtarget1 ~ antibodies,
+  abtarget2 ~ antibodies,
+  test1 ~ abtarget1,
+  test2 ~ abtarget2,
+  test3 ~ abtarget2,
+  latent = c("infected","antibodies","abtarget1","abtarget2"),
+  exposure = "prevalence",
+  outcome = c("test1", "test2", "test3"),
+  labels = c("infected"="Infected", "prevalence"="Prevalence",
+             "antigen"="Pathogen Detectable", "antibodies"="Producing Antibodies", "abtarget1"="Presence of Target 1", "abtarget2"="Presence of Target 2",
+             "test1"="Test A", "test2"="Test B", "test3"="Test C")
+)
+ggdag(eg_dag, text=FALSE, use_labels="label") + theme_dag_blank()
+```
+
+. . .
+
+- All tests are correlated with respect to infected BUT infected is not the latent class
+
+- Tests B and C are correlated with respect to antibodies - but maybe not substantially?
+
+- - -
+
+```{r echo=FALSE, fig.height=4}
+eg_dag <- dagify(
+  infected ~ prevalence,
+  antigen ~ infected,
+  antibodies ~ infected,
+  test1 ~ antigen,
+  test2 ~ antibodies,
+  latent = c("infected","antibodies"),
+  exposure = "prevalence",
+  outcome = c("test1", "test2"),
+  labels = c("infected"="Infected", "prevalence"="Prevalence",
+             "antigen"="Pathogen Detectable", "antibodies"="Producing Antibodies", "abtarget"="Presence of Target",
+             "test1"="Test A", "test2"="Test B", "test3"="Test C")
+)
+ggdag(eg_dag, text=FALSE, use_labels="label") + theme_dag_blank()
+```
+
+. . .
+
+- No correlation to model
+
+- - -
+
+```{r echo=FALSE, fig.height=4}
+eg_dag <- dagify(
+  infected ~ prevalence,
+#  antigen ~ infected,
+  antibodies ~ infected,
+  test1 ~ antibodies,
+  test2 ~ antibodies,
+  latent = c("infected","antibodies"),
+  exposure = "prevalence",
+  outcome = c("test1", "test2"),
+  labels = c("infected"="Infected", "prevalence"="Prevalence",
+             "antigen"="Pathogen Detectable", "antibodies"="Producing Antibodies", "abtarget"="Presence of Target",
+             "test1"="Test A", "test2"="Test B", "test3"="Test C")
+)
+ggdag(eg_dag, text=FALSE, use_labels="label") + theme_dag_blank()
+```
+
+. . .
+
+- No correlation to model - but "infected" is not the latent class
+
+
+## Publication of your results
+
+STARD-BLCM:  A helpful structure to ensure that papers contain all necessary information
+  
+  - You should follow this and refer to it in your articles!
+
+. . .
+
+If you use the software, please cite JAGS:
+
+  - Plummer, M. (2003). JAGS : A Program for Analysis of Bayesian Graphical Models Using Gibbs Sampling JAGS : Just Another Gibbs Sampler. Proceedings of the 3rd International Workshop on Distributed Statistical Computing (DSC 2003), March 20–22,Vienna, Austria. ISSN 1609-395X. https://doi.org/10.1.1.13.3406
+
+---
+
+And R:
+
+```{r}
+citation()
+```
+
+---
+
+And runjags:
+
+```{r}
+citation("runjags")
+```
 
 
 
@@ -520,8 +733,6 @@ See `?runjags::add.summary` for more information on mutate
 1. How does including a third test impact the inference for the first two tests?
 
 1. What happens if we include correlation between tests?
-
-1. Can we include correlation if we only have 2 tests?
 
 
 `r exercise_start()`
