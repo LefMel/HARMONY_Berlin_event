@@ -12,7 +12,7 @@ output:
 
 ### Prevalence Context
  
-Methods for freedom from infection can be adopted to each particular context
+Methods for freedom from infection can be adapted to each particular context
 
 * Absence of infection is assumed: Scenario tree method 
 
