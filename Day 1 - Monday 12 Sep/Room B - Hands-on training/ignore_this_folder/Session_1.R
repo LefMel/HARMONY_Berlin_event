@@ -779,7 +779,7 @@ cat(model_definition, sep='\n')
 #' 
 ## ---- eval=FALSE--------------------------------------------------------------
 ## for(i in 1:N){
-##   NegativePositive[i] ~ dcat(prevalence[1:2])
+##   NegativePositive[i] ~ dcat(observed_probabilities[1:2])
 ## }
 ## observed_probabilities[2] <- prevalence
 ## observed_probabilities[1] <- 1 - prevalence
