@@ -227,7 +227,7 @@ prev <- list(chain1=c(0.1, 0.1, 0.1, 0.9, 0.9), chain2=c(0.9, 0.9, 0.9, 0.1, 0.1
 ## 
 ##   ## snip ##
 ## 
-##   #data# Tally, TotalTests, Populations, se_prior, sp_prior, prev
+##   #data# Tally, TotalTests, Populations, prev
 ##   #monitor# prev, prob, se, sp
 ##   #inits# prev, se, sp
 ## }
@@ -265,36 +265,16 @@ Tally <- matrix(1:4, ncol=2)
 Populations <- 2
 
 #' 
-## -----------------------------------------------------------------------------
-data <- list(
-  Tally = Tally,
-  TotalTests = apply(Tally, 2, sum),
-  Populations = dim(Tally)[2],
-  prev = rep(NA, Populations),
-  se_prior = matrix(1, ncol=2, nrow=2),
-  sp_prior = matrix(1, ncol=2, nrow=2)
-)
-data$prev[1] <- 0
-
-#' 
-#' - - -
-#' 
-#' 
 ## ----eval=FALSE---------------------------------------------------------------
-## inits <- list(
-##   chain1 = list(
-##     prev = c(NA, 0.1, 0.1, 0.9, 0.9),
-##     se = c(0.5, 0.99),
-##     sp = c(0.5, 0.99)
-##   ),
-##   chain2 = list(
-##     prev = c(NA, 0.9, 0.9, 0.1, 0.1),
-##     se = c(0.99, 0.5),
-##     sp = c(0.99, 0.5)
-##   )
+## data <- list(
+##   Tally = Tally,
+##   TotalTests = apply(Tally, 2, sum),
+##   Populations = dim(Tally)[2],
+##   prev = rep(NA, Populations)
 ## )
+## data$prev[1] <- 0
 ## 
-## results <- run.jags(..., data = data, inits = inits)
+## results <- run.jags(..., data = data)
 
 #' 
 #' . . .
@@ -413,24 +393,11 @@ model{
     prev[p] ~ dbeta(1, 1)
   }
 
-  se[1] ~ dbeta(se_prior[1,1], se_prior[1,2])T(1-sp[1], )
-  # Or just:
-  # se[1] ~ dbeta(1, 1)T(1-sp[1], )
+  se[1] ~ dbeta(1, 1)T(1-sp[1], )
+  sp[1] ~ dbeta(1, 1)
   
-  sp[1] ~ dbeta(sp_prior[1,1], sp_prior[1,2])
-  # Or just:
-  # sp[1] ~ dbeta(1, 1)
-  
-  se[2] ~ dbeta(se_prior[2,1], se_prior[2,2])T(1-sp[2], )
-  # Or just:
-  # se[2] ~ dbeta(1, 1)T(1-sp[2], )
-  
-  sp[2] ~ dbeta(sp_prior[2,1], sp_prior[2,2])
-  # Or just:
-  # sp[2] ~ dbeta(1, 1)
-  
-  # If you are using se_prior and sp_prior then you also need this line:
-  #data# se_prior, sp_prior
+  se[2] ~ dbeta(1, 1)T(1-sp[2], )
+  sp[2] ~ dbeta(1, 1)
   
   #data# Tally, TotalTests, Populations
   #monitor# prev, se, sp
@@ -442,8 +409,6 @@ cat(multipop, file="multipopulation.txt")
 cleanup <- c(cleanup, "multipopulation.txt")
 
 #' 
-#' [Note: using `se_prior` and `sp_prior` is optional: you can also put the priors directly into the model code e.g. dbeta(1,1) as before]
-#' 
 #' Here is the R code to run the model:
 #' 
 ## -----------------------------------------------------------------------------
@@ -453,10 +418,6 @@ set.seed(2022-09-13)
 # Make sure this is passed to JAGS:
 .RNG.name <- "lecuyer::RngStream"
 .RNG.seed <- list(chain1=sample.int(1e6, 1), chain2=sample.int(1e6, 1))
-
-# Set up the se_prior and sp_prior variables (optional):
-se_prior <- matrix(1, nrow=2, ncol=2)
-sp_prior <- matrix(1, nrow=2, ncol=2)
 
 # Set up initial values for 5 populations:
 se <- list(chain1=c(0.5,0.99), chain2=c(0.99,0.5))
@@ -584,13 +545,12 @@ model{
     prev[p] ~ dbeta(1, 1)
   }
 
-  se[1] ~ dbeta(se_prior[1,1], se_prior[1,2])T(1-sp[1], )
-  sp[1] ~ dbeta(sp_prior[1,1], sp_prior[1,2])
-  se[2] ~ dbeta(se_prior[2,1], se_prior[2,2])T(1-sp[2], )
-  sp[2] ~ dbeta(sp_prior[2,1], sp_prior[2,2])
-
-  #data# se_prior, sp_prior
+  se[1] ~ dbeta(1, 1)T(1-sp[1], )
+  sp[1] ~ dbeta(1, 1)
   
+  se[2] ~ dbeta(1, 1)T(1-sp[2], )
+  sp[2] ~ dbeta(1, 1)
+
   # The new line:
   #data# prev
 
@@ -614,9 +574,7 @@ data <- list(
   Tally = Tally,
   TotalTests = apply(Tally, 2, sum),
   Populations = dim(twoXtwoXpop)[3],
-  prev = rep(NA, dim(twoXtwoXpop)[3]),
-  se_prior = matrix(1, ncol=2, nrow=2),
-  sp_prior = matrix(1, ncol=2, nrow=2)
+  prev = rep(NA, dim(twoXtwoXpop)[3])
 )
 
 #' 
@@ -850,12 +808,11 @@ model{
   intercept ~ dnorm(0, 0.33)
   tau ~ dgamma(0.01, 0.01)
   
-  se[1] ~ dbeta(se_prior[1,1], se_prior[1,2])T(1-sp[1], )
-  sp[1] ~ dbeta(sp_prior[1,1], sp_prior[1,2])
-  se[2] ~ dbeta(se_prior[2,1], se_prior[2,2])T(1-sp[2], )
-  sp[2] ~ dbeta(sp_prior[2,1], sp_prior[2,2])
-
-  #data# se_prior, sp_prior
+  se[1] ~ dbeta(1, 1)T(1-sp[1], )
+  sp[1] ~ dbeta(1, 1)
+  
+  se[2] ~ dbeta(1, 1)T(1-sp[2], )
+  sp[2] ~ dbeta(1, 1)
   
   #data# Tally, TotalTests, Populations
   #monitor# prev[1], se, sp, tau, intercept
