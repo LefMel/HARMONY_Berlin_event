@@ -93,21 +93,6 @@ data <- tibble(Population = sample(seq_len(Populations), N, replace=TRUE)) %>%
 #' - We need to take **extreme** care with these equations, and the multinomial tabulation!!!
 #'  
 #' 
-#' ## Degrees of freedom
-#' 
-#' - The amount of information (degrees of freedom) in the data depends on the number of tests and number of populations:
-#'   * 1 test, 1 population:  1 d.f.
-#'   * 2 tests, 1 population:  2 d.f.
-#'   * 2 tests, 2 populations:  3 d.f.
-#'   * 2 tests, 3 populations:  5 d.f.
-#'   
-#' . . .
-#' 
-#' - In general:
-#'   * d.f. = (2^tests - 1) x populations
-#'   * See:  Cheung et al, 2021
-#' 
-#' 
 #' ## Are the tests conditionally independent?
 #' 
 #' 
@@ -154,30 +139,6 @@ covid_dag <- dagify(
 ggdag(covid_dag, text=FALSE, use_labels="label") + theme_dag_blank()
 
 #' 
-#' - - -
-#' 
-#' - Or with explicit antigen test crossreaction:
-#' 
-## ----echo=FALSE, fig.height=4-------------------------------------------------
-covid_dag <- dagify(
-  infected ~ prevalence,
-  virus_throat ~ infected,
-  virus_nose ~ infected,
-  throat_pcr ~ virus_throat,
-  throat_antigen ~ virus_throat,
-  nose_antigen ~ virus_nose,
-  throat_antigen ~ cross_reaction,
-  nose_antigen ~ cross_reaction,
-  latent = c("infected", "virus_throat", "virus_nose"),
-  exposure = "prevalence",
-  outcome = c("throat_pcr", "throat_antigen", "nose_antigen"),
-  labels = c("infected"="infected", "prevalence"="prevalence",
-             "virus_throat"="virus_throat", "virus_nose"="virus_nose",
-             "throat_pcr"="throat_pcr", "throat_antigen"="throat_antigen",
-             "nose_antigen"="nose_antigen", "cross_reaction"="cross_reaction")
-)
-ggdag(covid_dag, text=FALSE, use_labels="label") + theme_dag_blank()
-
 #' 
 #' ## Dealing with correlation: Covid example
 #' 
@@ -437,34 +398,6 @@ results
 #' 
 #' # How to interpret the latent class
 #' 
-#' 
-#' ## What exactly is our latent class?
-#' 
-#' Think about what exactly the latent class is in these situations:
-#' 
-#' 1. An antigen plus antibody test
-#' 
-#' . . .
-#' 
-#'   * The latent status is probably close to the true disease status
-#'   
-#' . . .
-#' 
-#' 2. Two antibody tests 
-#' 
-#' . . .
-#' 
-#'   * The latent status is actually 'producing antibodies'
-#'     * And not 'diseased' !!!
-#'   
-#' . . .
-#' 
-#' - What do we mean by "conditionally independent"?
-#' 
-#'   * Independent of each other conditional on the latent state
-#'   * But the latent state is NOT always *disease*
-#' 
-#' 
 #' ## A hierarchy of latent states
 #' 
 #' 
@@ -511,19 +444,11 @@ ggdag(ab_dag, text=FALSE, use_labels="label") + theme_dag_blank()
 #' 
 #' ## When should we correct for correlation?
 #' 
-#' Aims:
+#' - For each of the following DAG:
 #' 
-#' - To get you to think about when and why we should try to correct for correlation
+#'   * Consider what is the latent class
 #' 
-#' - To get you to think about what is NOT achieved by including correlation terms
-#' 
-#' . . .
-#' 
-#' Main discussion points for each example:
-#' 
-#' - What is the latent class
-#' 
-#' - Which correlation terms should we include and why
+#'   * Consider which correlation terms we should include and why
 #' 
 #' 
 #' - - -
