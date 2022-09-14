@@ -109,7 +109,7 @@ Sp_Blood = 1
 # Number of herds tested, per herd type
 # Different scenario given sample size
 n_dairy = seq(10,400,20)
-n_beef = seq(10,600,10)
+n_beef = seq(10,400,10)
 ```
 
 ## Estimate Surveillance component sensitivity (SCSe)
