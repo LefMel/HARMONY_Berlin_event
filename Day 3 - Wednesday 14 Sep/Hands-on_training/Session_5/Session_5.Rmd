@@ -23,12 +23,6 @@ Simulations based on hypotheses
 Bayesian Inference
 
 
-## Mentimeter
-
-[Mentimeter Link](https://www.menti.com)
-
-Mentimeter Code: 
-
 ## Thank you all - Group Photo
 
 ![](figs/sound-control.png){width=3in} 

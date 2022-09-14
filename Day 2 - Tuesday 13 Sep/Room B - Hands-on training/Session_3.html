@@ -570,7 +570,7 @@ with JAGS, but it is always a good idea!!!</em></p>
 
   ## snip ##
 
-  #data# Tally, TotalTests, Populations, se_prior, sp_prior, prev
+  #data# Tally, TotalTests, Populations, prev
   #monitor# prev, prob, se, sp
   #inits# prev, se, sp
 }</code></pre>
@@ -598,26 +598,11 @@ arguments</p>
   Tally = Tally,
   TotalTests = apply(Tally, 2, sum),
   Populations = dim(Tally)[2],
-  prev = rep(NA, Populations),
-  se_prior = matrix(1, ncol=2, nrow=2),
-  sp_prior = matrix(1, ncol=2, nrow=2)
+  prev = rep(NA, Populations)
 )
-data$prev[1] &lt;- 0</code></pre>
-<hr />
-<pre class="r"><code>inits &lt;- list(
-  chain1 = list(
-    prev = c(NA, 0.1, 0.1, 0.9, 0.9),
-    se = c(0.5, 0.99),
-    sp = c(0.5, 0.99)
-  ),
-  chain2 = list(
-    prev = c(NA, 0.9, 0.9, 0.1, 0.1),
-    se = c(0.99, 0.5),
-    sp = c(0.99, 0.5)
-  )
-)
+data$prev[1] &lt;- 0
 
-results &lt;- run.jags(..., data = data, inits = inits)</code></pre>
+results &lt;- run.jags(..., data = data)</code></pre>
 <div class="incremental">
 <p>See the help file for <code>?run.jags</code> for more details</p>
 </div>
@@ -734,33 +719,17 @@ model{
     prev[p] ~ dbeta(1, 1)
   }
 
-  se[1] ~ dbeta(se_prior[1,1], se_prior[1,2])T(1-sp[1], )
-  # Or just:
-  # se[1] ~ dbeta(1, 1)T(1-sp[1], )
+  se[1] ~ dbeta(1, 1)T(1-sp[1], )
+  sp[1] ~ dbeta(1, 1)
   
-  sp[1] ~ dbeta(sp_prior[1,1], sp_prior[1,2])
-  # Or just:
-  # sp[1] ~ dbeta(1, 1)
-  
-  se[2] ~ dbeta(se_prior[2,1], se_prior[2,2])T(1-sp[2], )
-  # Or just:
-  # se[2] ~ dbeta(1, 1)T(1-sp[2], )
-  
-  sp[2] ~ dbeta(sp_prior[2,1], sp_prior[2,2])
-  # Or just:
-  # sp[2] ~ dbeta(1, 1)
-  
-  # If you are using se_prior and sp_prior then you also need this line:
-  #data# se_prior, sp_prior
+  se[2] ~ dbeta(1, 1)T(1-sp[2], )
+  sp[2] ~ dbeta(1, 1)
   
   #data# Tally, TotalTests, Populations
   #monitor# prev, se, sp
   #inits# prev, se, sp, .RNG.name, .RNG.seed
   #module# lecuyer
 }</code></pre>
-<p>[Note: using <code>se_prior</code> and <code>sp_prior</code> is
-optional: you can also put the priors directly into the model code
-e.g. dbeta(1,1) as before]</p>
 <p>Here is the R code to run the model:</p>
 <pre class="r"><code># Set a random seed in R:
 set.seed(2022-09-13)
@@ -768,10 +737,6 @@ set.seed(2022-09-13)
 # Make sure this is passed to JAGS:
 .RNG.name &lt;- &quot;lecuyer::RngStream&quot;
 .RNG.seed &lt;- list(chain1=sample.int(1e6, 1), chain2=sample.int(1e6, 1))
-
-# Set up the se_prior and sp_prior variables (optional):
-se_prior &lt;- matrix(1, nrow=2, ncol=2)
-sp_prior &lt;- matrix(1, nrow=2, ncol=2)
 
 # Set up initial values for 5 populations:
 se &lt;- list(chain1=c(0.5,0.99), chain2=c(0.99,0.5))
@@ -811,7 +776,7 @@ results_5p
 ## sp[1]    1863 0.17442 1.0016
 ## sp[2]    2131 0.14722 1.0016
 ## 
-## Total time taken: 2.5 seconds</code></pre>
+## Total time taken: 2.2 seconds</code></pre>
 <p>To change the number of populations and range of prevalence you just
 need to modify the simulation code, for example 3 populations with
 prevalence between 0.4-0.6 can be obtained using:</p>
@@ -887,7 +852,7 @@ results_3p
 ## sp[1]     504 0.59762 1.0009
 ## sp[2]    1141 0.34332 1.0031
 ## 
-## Total time taken: 1.7 seconds</code></pre>
+## Total time taken: 0.8 seconds</code></pre>
 <p>Note that the effective sample size is not enough here - you either
 need to run the model for longer in the first place, or extend it to get
 more samples:</p>
@@ -919,7 +884,7 @@ results_3p
 ## sp[1]    2857 0.60176 1.0006
 ## sp[2]    5061 0.37145 1.0009
 ## 
-## Total time taken: 6 seconds</code></pre>
+## Total time taken: 2.6 seconds</code></pre>
 <p>As a general rule, the more populations you have, and the more the
 prevalence varies between them, the better. With two tests, we really
 need two or more populations for the model to be identifiable. However,
@@ -994,13 +959,12 @@ model{
     prev[p] ~ dbeta(1, 1)
   }
 
-  se[1] ~ dbeta(se_prior[1,1], se_prior[1,2])T(1-sp[1], )
-  sp[1] ~ dbeta(sp_prior[1,1], sp_prior[1,2])
-  se[2] ~ dbeta(se_prior[2,1], se_prior[2,2])T(1-sp[2], )
-  sp[2] ~ dbeta(sp_prior[2,1], sp_prior[2,2])
-
-  #data# se_prior, sp_prior
+  se[1] ~ dbeta(1, 1)T(1-sp[1], )
+  sp[1] ~ dbeta(1, 1)
   
+  se[2] ~ dbeta(1, 1)T(1-sp[2], )
+  sp[2] ~ dbeta(1, 1)
+
   # The new line:
   #data# prev
 
@@ -1043,9 +1007,7 @@ data &lt;- list(
   Tally = Tally,
   TotalTests = apply(Tally, 2, sum),
   Populations = dim(twoXtwoXpop)[3],
-  prev = rep(NA, dim(twoXtwoXpop)[3]),
-  se_prior = matrix(1, ncol=2, nrow=2),
-  sp_prior = matrix(1, ncol=2, nrow=2)
+  prev = rep(NA, dim(twoXtwoXpop)[3])
 )</code></pre>
 <p>Then we need to add data corresponding to the known prevalence in the
 first and third population, but leave it missing in the second:</p>
@@ -1096,7 +1058,7 @@ results_3p
 ## sp[1]    4054 0.038467 1.0004
 ## sp[2]    5602 0.020724 1.0003
 ## 
-## Total time taken: 1.1 seconds</code></pre>
+## Total time taken: 0.5 seconds</code></pre>
 <p>The 95% CI for sensitivity and specificity of both tests are
 extremely narrow compared to the previous dataset with the same
 minimally informative priors. This is because of the 1st and 3rd
@@ -1176,7 +1138,7 @@ results_2p
 ## sp[1]    2201 0.12893 1.0018
 ## sp[2]    2123 0.15582 1.0016
 ## 
-## Total time taken: 1.1 seconds</code></pre>
+## Total time taken: 0.4 seconds</code></pre>
 <p>The sensitivity of both tests is now much more poorly estimated
 because we don’t have a known positive population on which to base this
 estimate. Furthermore, the posteriors have generally shifted downwards
@@ -1338,7 +1300,7 @@ characteristics compare to using 5 populations:</p>
 ## sp[1]    1863 0.17442 1.0016
 ## sp[2]    2131 0.14722 1.0016
 ## 
-## Total time taken: 2.5 seconds</code></pre>
+## Total time taken: 2.2 seconds</code></pre>
 </div>
 </div>
 <div id="optional-exercise-b" class="section level2 fragile">
@@ -1400,12 +1362,11 @@ model{
   intercept ~ dnorm(0, 0.33)
   tau ~ dgamma(0.01, 0.01)
   
-  se[1] ~ dbeta(se_prior[1,1], se_prior[1,2])T(1-sp[1], )
-  sp[1] ~ dbeta(sp_prior[1,1], sp_prior[1,2])
-  se[2] ~ dbeta(se_prior[2,1], se_prior[2,2])T(1-sp[2], )
-  sp[2] ~ dbeta(sp_prior[2,1], sp_prior[2,2])
-
-  #data# se_prior, sp_prior
+  se[1] ~ dbeta(1, 1)T(1-sp[1], )
+  sp[1] ~ dbeta(1, 1)
+  
+  se[2] ~ dbeta(1, 1)T(1-sp[2], )
+  sp[2] ~ dbeta(1, 1)
   
   #data# Tally, TotalTests, Populations
   #monitor# prev[1], se, sp, tau, intercept
@@ -1471,7 +1432,7 @@ results_random
 ## tau           1.7  3641  0.16628 1.0006
 ## intercept     1.9  2663   0.2753 1.0023
 ## 
-## Total time taken: 25.8 seconds</code></pre>
+## Total time taken: 9.8 seconds</code></pre>
 <p>These results give much narrower confidence intervals for the
 sensitivity and specificity than when assuming that the prevalences are
 independent. The downside is that we must assume that the distribution
