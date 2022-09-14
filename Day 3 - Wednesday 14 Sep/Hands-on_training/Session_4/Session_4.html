@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>The STOC free model</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Aurélien Madouasse &amp; Eleftherios Meletis" />
+    <meta name="date" content="2022-09-14" />
+    <script src="libs/header-attrs/header-attrs.js"></script>
+    <link href="libs/remark-css/default.css" rel="stylesheet" />
+    <link href="libs/remark-css/default-fonts.css" rel="stylesheet" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+.title[
+# The STOC free model
+]
+.author[
+### Aurélien Madouasse &amp; Eleftherios Meletis
+]
+.date[
+### 2022-09-14
+]
+
+---
+
+
+
+
+class: inverse, center, middle
+
+# Objectives of this presentation
+
+---
+# Objectives
+
+- Explain for which type of problems the model can be used
+
+- Explain the principles of the model
+
+- Use the model
+
+- Interpret the model's results
+
+---
+class: inverse, center, middle
+
+# Context
+
+---
+class: center, middle
+
+## The STOC free project: [www.stocfree.eu](https://www.stocfree.eu/)
+
+![](figs/STOCfree_aims.png)
+
+
+---
+
+background-image: url("figs/STOCfree_partners.png")
+
+---
+## Context
+
+- Disease surveillance programmes when the disease is still present
+
+--
+
+- **Objectives:**
+
+ - identify infected herds
+
+ - protect uninfected herds from infection within the programme
+ 
+ - reassure trading partners from outside the programme
+ 
+--
+
+- **Aim of the model:**
+
+ - estimate a probability of freedom from infection for all herds in the programme incorporating all the available information
+ 
+---
+## Modelling framework
+
+- Model outcome: herd-level probability of being positive in the most recent month for which surveillance data are available
+
+--
+
+- Input data:
+
+ - test results
+ 
+ - risk factors
+ 
+--
+
+- Hidden Markov Model:
+
+ - imperfect tests
+
+ - latent status
+ 
+ - monthly dynamics
+ 
+
+--
+
+- Bayesian inference:
+
+ - requires priors
+ 
+ - modelling in Stan (or JAGS)
+
+--
+
+- Model description: https://peercommunityjournal.org/articles/10.24072/pcjournal.80/
+
+---
+## Modelling framework
+
+
+![](figs/STOCfree_modelling_framework.png)
+
+---
+## Modelling framework
+
+
+![](figs/STOCfree_test_imperfection.png)
+
+---
+## Modelling framework
+
+
+![](figs/STOCfree_infection_dynamics.png)
+
+
+---
+## Model priors
+
+- Running the model requires prior distributions for
+
+ - Test characteristics: sensitivity and specificity
+ 
+ - Status dynamics: probability of being positive on the first test, probability of becoming positive, probability of remaining positive
+
+---
+class: inverse, center, middle
+
+# Using the STOC free model
+
+---
+## The STOCfree R package
+
+- Model available as an R package from GitHub
+
+- The GitHub page contains the instructions to install and use the package
+
+&lt;br&gt;&lt;br&gt;
+.center[https://github.com/AurMad/STOCfree]
+
+---
+## Computer programme for Bayesian inference
+
+- The `STOCfree` package can use either Stan or JAGS to perform Bayesian inference
+
+--
+
+- JAGS: Just Another Gibbs Sampler
+
+ - Similar to WinBUGS / OpenBUGS
+
+--
+
+- Stan:
+
+ - More recent than JAGS
+ 
+ - Uses Hamiltonian Monte Carlo for estimation `\(\rightarrow\)` more efficient than older methods of sampling
+ 
+ - The `STOCfree` package uses the CmdStan version of Stan
+ 
+ - [Getting started with CmdStanR](https://mc-stan.org/cmdstanr/articles/cmdstanr.html)
+ 
+- Stan is faster and works better
+ 
+---
+## Installing the STOCfree package
+
+- From GitHub:
+
+
+```r
+remotes::install_github("AurMad/STOCfree")
+```
+
+- Attach the package:
+
+
+```r
+library(STOCfree)
+```
+
+- We will also need a few other packages
+
+
+```r
+library(tidyverse)
+library(ggplot2)
+```
+
+
+---
+## BVDV surveillance dataset
+
+- The package contains a toy dataset called `herdBTM` that we will use for demonstrating how to use the model
+
+--
+
+- Mimics what is done in some BVD surveillance programmes in French dairy herds:
+
+ - BVDV specific antibodies are sought in a bulk tank milk sample
+ - All herds in the programme are tested twice a year
+
+--
+
+
+```
+## # A tibble: 588 × 6
+##    Farm  DateOfTest    ODR Test    TestResult LocalSeroPrev
+##    &lt;chr&gt; &lt;date&gt;      &lt;dbl&gt; &lt;chr&gt;        &lt;dbl&gt;         &lt;dbl&gt;
+##  1 FR001 2014-02-04  57.6  BTM_ODR          1          0.12
+##  2 FR001 2014-09-10  66.5  BTM_ODR          1          0.1 
+##  3 FR001 2015-02-01  52.5  BTM_ODR          1          0.08
+##  4 FR001 2015-09-03  46.7  BTM_ODR          1          0.1 
+##  5 FR001 2016-02-18  38.3  BTM_ODR          1          0.22
+##  6 FR001 2016-09-01   7.48 BTM_ODR          0          0.14
+##  7 FR002 2014-02-06 -16.3  BTM_ODR          0          0.14
+##  8 FR002 2014-09-02   8.00 BTM_ODR          0          0.1 
+##  9 FR002 2015-02-01   8.80 BTM_ODR          0          0.08
+## 10 FR002 2015-09-03 -33.6  BTM_ODR          0          0.1 
+## # … with 578 more rows
+```
+
+
+---
+## BVDV surveillance dataset
+
+- The columns of `herdBTM` are:
+ - `Farm`: Farm ID, from FR001 to FR100
+ - `DateOfTest`: date of test
+ - `ODR`: test result as an optical density ratio
+ - `Test`: type of test used. We will only use BTM_ODR
+ - `TestResult`: test result dichotomised based on the value in the `ODR` column
+ - `LocalSeroPrev`: Proportion of seropositives in the municipality `\(\rightarrow\)` risk factor
+
+
+
+```r
+glimpse(herdBTM)
+```
+
+```
+## Rows: 876
+## Columns: 6
+## $ Farm          &lt;chr&gt; "FR001", "FR001", "FR001", "FR001", "FR001", "FR001", "F…
+## $ DateOfTest    &lt;date&gt; 2014-02-04, 2014-03-01, 2014-09-10, 2014-10-01, 2015-02…
+## $ ODR           &lt;dbl&gt; 57.562955, NA, 66.478261, NA, 52.545911, NA, 46.741559, …
+## $ Test          &lt;chr&gt; "BTM_ODR", "confirm", "BTM_ODR", "confirm", "BTM_ODR", "…
+## $ TestResult    &lt;dbl&gt; 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0,…
+## $ LocalSeroPrev &lt;dbl&gt; 0.12, 0.12, 0.10, 0.10, 0.08, 0.08, 0.10, 0.10, 0.22, 0.…
+```
+
+---
+## BVDV surveillance dataset
+
+- Let's discard the data we will not need
+
+
+```r
+hbm &lt;- herdBTM %&gt;% 
+  filter(Test == "BTM_ODR") %&gt;% 
+  select(Farm, DateOfTest, TestResult)
+
+hbm
+```
+
+```
+## # A tibble: 588 × 3
+##    Farm  DateOfTest TestResult
+##    &lt;chr&gt; &lt;date&gt;          &lt;dbl&gt;
+##  1 FR001 2014-02-04          1
+##  2 FR001 2014-09-10          1
+##  3 FR001 2015-02-01          1
+##  4 FR001 2015-09-03          1
+##  5 FR001 2016-02-18          1
+##  6 FR001 2016-09-01          0
+##  7 FR002 2014-02-06          0
+##  8 FR002 2014-09-02          0
+##  9 FR002 2015-02-01          0
+## 10 FR002 2015-09-03          0
+## # … with 578 more rows
+```
+
+
+---
+## Preparing the data for analysis
+
+- The `STOC free model` works with `STOCfree_data` objects
+
+--
+
+- How to make a `STOCfree_data` object?
+
+
+```r
+sfd &lt;- STOCfree_data(
+  test_data = hbm,
+  test_herd_col = "Farm",
+  test_date_col = "DateOfTest",
+  test_res_col = "TestResult"
+)
+```
+
+---
+## What is inside STOCfree_data objects?
+
+
+```r
+str(sfd, max.level = 1)
+```
+
+```
+## List of 8
+##  $ var_names       : Named chr [1:3] "Farm" "DateOfTest" "TestResult"
+##   ..- attr(*, "names")= chr [1:3] "test_herd_col" "test_date_col" "test_res_col"
+##  $ herd_id_corresp :'data.frame':	100 obs. of  2 variables:
+##  $ test_data       :'data.frame':	680 obs. of  6 variables:
+##  $ herd_test_data  :'data.frame':	100 obs. of  3 variables:
+##  $ test_perf_prior :'data.frame':	1 obs. of  6 variables:
+##  $ risk_factors    :'data.frame':	1 obs. of  3 variables:
+##  $ risk_factor_data:'data.frame':	3300 obs. of  4 variables:
+##  $ inf_dyn_priors  : Named logi [1:6] NA NA NA NA NA NA
+##   ..- attr(*, "names")= chr [1:6] "logit_pi1_mean" "logit_pi1_sd" "logit_tau1_mean" "logit_tau1_sd" ...
+##  - attr(*, "level")= chr "herd"
+##  - attr(*, "status dynamics scale")= chr "logit"
+##  - attr(*, "number of herds")= int 100
+##  - attr(*, "number of tests")= num 1
+##  - attr(*, "month first test")= chr "2014-02"
+##  - attr(*, "month last test")= chr "2016-10"
+##  - attr(*, "number of risk factors")= num 0
+##  - attr(*, "class")= chr [1:2] "herd_dynLogit" "STOCfree_data"
+```
+
+---
+## Prior distributions for test characteristics
+
+- Prior distributions must be provided for test characteristics
+ - Beta distributions for sensitivity and specificity
+ - Need to provide `\(\alpha\)` and `\(\beta\)`
+ 
+
+```r
+show_tests(sfd)
+```
+
+```
+##         test test_id Se_a Se_b Sp_a Sp_b
+## 1 TestResult       1   NA   NA   NA   NA
+```
+ 
+---
+## Prior distributions for test characteristics
+
+- In order to identify the parameters that correspond to what we know about the test, we can use the `shiny_beta()` function from the  `betadistapp` package
+
+- Install the package:
+
+
+```r
+remotes::install_github("AurMad/betadistapp")
+```
+
+--
+
+- Launch the shiny app:
+
+
+```r
+betadistapp::shiny_beta()
+```
+
+--
+
+- Set the priors for the test characteristics
+
+
+```r
+sfd &lt;- set_priors_tests(
+  x = sfd,
+  Se_a = 80,
+  Se_b = 20,
+  Sp_a = 99,
+  Sp_b = 1
+)
+```
+
+---
+## Prior distributions for test characteristics
+
+- Check your prior distributions:
+
+
+```r
+show_tests(sfd)
+```
+
+```
+##         test test_id Se_a Se_b Sp_a Sp_b
+## 1 TestResult       1   80   20   99    1
+```
+
+
+---
+## Prior distributions for test characteristics
+
+- Display your prior distributions:
+
+
+```r
+plot_priors_tests(sfd)
+```
+
+&lt;img src="Session_4_files/figure-html/unnamed-chunk-14-1.png" style="display: block; margin: auto;" /&gt;
+
+
+---
+## Prior distributions for infection dynamics
+
+- Prior distributions must be provided for:
+
+ - the probability of being positive ( `\(\pi_1\)` )
+ - the probability of becoming positive between consecutive months ( `\(\tau_1\)` )
+ - the probability of remaining positive between consecutive months ( `\(\tau_2\)` )
+ 
+--
+
+- These priors are defined using normal distributions on the logit scale.
+
+--
+
+- What is this?
+
+---
+## Prior distributions for infection dynamics
+
+- An event such as an infection is either absent ( `\(Y = 0\)` ) or present ( `\(Y = 1\)` )
+
+--
+
+- This event has a certain probability `\(p\)` of occurrence with `\(p = 0\)` denoting the certainty of absence and `\(p = 1\)` denoting the certainty of presence.
+ - `\(p\)` can take all values between `\(0\)` and `\(1\)`
+ - `\(p\)` cannot be outside the interval (0, 1)
+ 
+--
+ 
+- the logit transformation is as follows: 
+$$logit(p) = ln \left( \frac{p} {1 - p} \right) $$
+
+--
+
+- the logit transformation allows to use distributions defined on ( `\(- \infty, + \infty\)` )
+
+- a value of 0 on the logit scale corresponds to a probability of 0.5
+
+- the function is symmetric around 0
+
+---
+## Prior distributions for infection dynamics
+
+&lt;img src="Session_4_files/figure-html/unnamed-chunk-15-1.png" style="display: block; margin: auto;" /&gt;
+
+---
+## Prior distributions for infection dynamics
+
+- In order to identify the parameters that correspond to what we know about the infection dynamics, we can use the `shiny_logitnorm()` function from the  `logitnormdistapp` package
+
+- Install the package:
+
+
+```r
+remotes::install_github("AurMad/logitnormdistapp")
+```
+
+--
+
+- Launch the shiny app:
+
+
+```r
+logitnormdistapp::shiny_logitnorm()
+```
+
+--
+
+- Set the priors for the test characteristics:
+
+
+```r
+sfd &lt;- set_priors_status_dyn(sfd, 
+                             logit_pi1_mean = -3,  logit_pi1_sd = 1, 
+                             logit_tau1_mean = -3, logit_tau1_sd = 1, 
+                             logit_tau2_mean = 3,  logit_tau2_sd = 1)
+```
+
+
+---
+## Prior distributions for infection dynamics
+
+
+```r
+plot_priors_status_dyn(sfd)
+```
+
+&lt;img src="Session_4_files/figure-html/unnamed-chunk-19-1.png" style="display: block; margin: auto;" /&gt;
+
+---
+## Running the model
+
+- In order to run the model, we use the `STOCfree_Stan()` function
+
+
+```r
+sfm_stan &lt;- STOCfree_Stan(sfd,
+                      n_chains = 3,
+                      n_iter = 1000,
+                      n_thin = 1,
+                      out_path = "STOCfree_Stan_1")
+```
+
+- The model results are saved in a folder called `STOCfree_Stan_1`
+
+- The model generates 2 types of outputs:
+
+ - Model parameters: test characteristics, status dynamics
+ - Probabilities of being positive on the last month of surveillance for each herd
+
+---
+## Analysing the results - model parameters
+
+- Samples from model parameters' posterior distributions can be extracted from the model output
+
+
+```r
+param &lt;- extract_STOCfree_param(sfm_stan)
+```
+
+- or from the place they were saved on the disk
+
+
+```r
+param &lt;- read_STOCfree_param("STOCfree_Stan_1")
+```
+
+---
+## Analysing the results - model parameters
+
+- Traceplots for evaluating convergence
+
+
+```r
+plot(param, parameter = "Se", type = "traceplot")
+```
+
+&lt;img src="Session_4_files/figure-html/unnamed-chunk-23-1.png" style="display: block; margin: auto;" /&gt;
+
+---
+## Analysing the results - model parameters
+
+- Density plot
+
+
+```r
+plot(param, parameter = "Se", type = "density")
+```
+
+&lt;img src="Session_4_files/figure-html/unnamed-chunk-24-1.png" style="display: block; margin: auto;" /&gt;
+
+---
+## Analysing the results - model parameters
+
+- Summary
+
+
+```r
+summary(param)
+```
+
+```
+##            mean          sd    median      2.5%      97.5%      ess
+## Se   0.85440988 0.023790012 0.8551345 0.8043369 0.89847435 2319.305
+## Sp   0.96105512 0.023142483 0.9632480 0.9117649 0.99718708 1316.844
+## pi1  0.50286614 0.062023339 0.5033110 0.3814108 0.62476938 2070.143
+## tau1 0.02817531 0.007753542 0.0276586 0.0150626 0.04485371 1248.664
+## tau2 0.98275418 0.006070033 0.9832235 0.9697386 0.99298378 1241.349
+```
+
+---
+## Analysing the results - predicted probabilities
+
+- Results for the predicted probabilities of being positive can be extracted from the model output
+
+
+```r
+pred &lt;- extract_STOCfree_pred(sfm_stan)
+```
+
+- or from the place they were saved on the disk
+
+
+```r
+pred &lt;- read_STOCfree_pred("STOCfree_Stan_1")
+```
+
+---
+## Analysing the results - predicted probabilities
+
+
+```r
+plot(pred)
+```
+
+&lt;img src="Session_4_files/figure-html/unnamed-chunk-28-1.png" style="display: block; margin: auto;" /&gt;
+
+---
+## Analysing the results - predicted probabilities
+
+
+```r
+plot(pred, type = "individual")
+```
+
+&lt;img src="Session_4_files/figure-html/unnamed-chunk-29-1.png" style="display: block; margin: auto;" /&gt;
+
+---
+## Analysing the results - predicted probabilities
+
+
+```r
+plot(pred, herd = c("FR001", "FR002"), type = "individual", legend = TRUE)
+```
+
+&lt;img src="Session_4_files/figure-html/unnamed-chunk-30-1.png" style="display: block; margin: auto;" /&gt;
+
+---
+## Analysing the results - predicted probabilities
+
+- MCMC summary values for the predicted probabilities of being positive in herds FR001 to FR009.
+
+
+```r
+summary(pred, herd = paste0("FR00", 1:9))
+```
+
+```
+##    herd  mean    sd median  2.5% 97.5%
+## 1 FR001 0.568 0.103  0.563 0.385 0.778
+## 2 FR002 0.844 0.103  0.859 0.610 0.990
+## 3 FR003 0.061 0.017  0.060 0.033 0.100
+## 4 FR004 0.978 0.007  0.978 0.964 0.990
+## 5 FR005 0.978 0.007  0.979 0.964 0.990
+## 6 FR006 0.977 0.007  0.977 0.960 0.989
+## 7 FR007 0.963 0.019  0.968 0.912 0.983
+## 8 FR008 0.978 0.007  0.979 0.964 0.990
+## 9 FR009 0.063 0.018  0.061 0.033 0.101
+```
+
+---
+## Analysing the results - predicted probabilities
+
+
+- The choice of which herds to categorise as *free from infection* is left to the user
+
+ - e.g. we want to be 97.5% sure that the probability of infection is smaller or equal to 10%
+ 
+
+```r
+as_tibble(summary(pred)) %&gt;% 
+  filter(`97.5%` &lt;= .1) 
+```
+
+```
+## # A tibble: 19 × 6
+##    herd   mean    sd median `2.5%` `97.5%`
+##    &lt;chr&gt; &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;   &lt;dbl&gt;
+##  1 FR003 0.061 0.017  0.06   0.033     0.1
+##  2 FR010 0.061 0.017  0.06   0.033     0.1
+##  3 FR025 0.061 0.017  0.06   0.033     0.1
+##  4 FR029 0.061 0.017  0.06   0.033     0.1
+##  5 FR031 0.062 0.018  0.061  0.033     0.1
+##  6 FR033 0.061 0.017  0.06   0.033     0.1
+##  7 FR035 0.061 0.017  0.06   0.033     0.1
+##  8 FR036 0.061 0.017  0.06   0.033     0.1
+##  9 FR048 0.062 0.018  0.061  0.033     0.1
+## 10 FR054 0.062 0.018  0.061  0.033     0.1
+## 11 FR056 0.062 0.018  0.061  0.033     0.1
+## 12 FR057 0.062 0.018  0.061  0.033     0.1
+## 13 FR062 0.061 0.017  0.06   0.033     0.1
+## 14 FR065 0.062 0.018  0.061  0.033     0.1
+## 15 FR069 0.061 0.017  0.06   0.033     0.1
+## 16 FR078 0.062 0.018  0.061  0.033     0.1
+## 17 FR082 0.061 0.017  0.06   0.033     0.1
+## 18 FR090 0.062 0.018  0.061  0.033     0.1
+## 19 FR098 0.061 0.017  0.06   0.033     0.1
+```
+ 
+---
+class: inverse, center, middle
+
+# Including risk factors
+
+---
+## Including risk factors
+
+- The STOC free model allows the inclusion of risk factors of new infection
+
+--
+
+ - logistic regression model for the probability of new infection `\(\tau_1\)`
+ - associations estimated from historical data
+ - requires priors on the regression coefficients
+ 
+--
+
+- allows the probability of freedom from infection to be higher in herds in which known risk factors of infection are present
+
+--
+
+- could be used to trigger testing in these herds
+
+---
+## Including risk factors - example from the paper
+
+.center[![](figs/risk_factor_intro.png)]
+
+
+---
+## Including risk factors - example from the paper
+
+.center[![](figs/risk_factor_intro_examples.png)]
+
+---
+## Including risk factors
+
+- See the [Github page](https://github.com/AurMad/STOCfree) in order to see how to include risk factors
+
+---
+class: inverse, center, middle
+
+# Thank you !
+
+
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "github",
+"highlightLines": true,
+"countIncrementalSlides": false,
+"ratio": "16/9"
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+// add `data-at-shortcutkeys` attribute to <body> to resolve conflicts with JAWS
+// screen reader (see PR #262)
+(function(d) {
+  let res = {};
+  d.querySelectorAll('.remark-help-content table tr').forEach(tr => {
+    const t = tr.querySelector('td:nth-child(2)').innerText;
+    tr.querySelectorAll('td:first-child .key').forEach(key => {
+      const k = key.innerText;
+      if (/^[a-z]$/.test(k)) res[k] = t;  // must be a single letter (key)
+    });
+  });
+  d.body.setAttribute('data-at-shortcutkeys', JSON.stringify(res));
+})(document);
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>
