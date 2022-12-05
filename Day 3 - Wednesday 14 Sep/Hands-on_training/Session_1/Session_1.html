@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Substantiating freedom from disease as a statistical problem</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Aurélien Madouasse &amp; Eleftherios Meletis" />
+    <meta name="date" content="2022-09-14" />
+    <script src="libs/header-attrs/header-attrs.js"></script>
+    <link href="libs/remark-css/default.css" rel="stylesheet" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+.title[
+# Substantiating freedom from disease as a statistical problem
+]
+.subtitle[
+## Core concepts
+]
+.author[
+### Aurélien Madouasse &amp; Eleftherios Meletis
+]
+.date[
+### 2022-09-14
+]
+
+---
+
+
+
+
+class: inverse, center, middle
+
+# Objectives of this presentation
+
+---
+# Objectives
+
+- Define the problem of substantiating freedom from disease as a statistical problem
+
+- List the main factors to take into account when assessing confidence in freedom
+
+- Define the most important surveillance outputs to estimate when substantiating freedom from disease
+
+- Define and explain the relevance of the design prevalence
+
+---
+class: inverse, center, middle
+
+# Sampling
+
+---
+## Sampling for proving freedom from disease
+
+- Evidence of infection sought by testing animals from the population of interest
+
+--
+
+ - Testing all the animals is usually too costly `\(\rightarrow\)` sampling
+ 
+--
+
+ - `\(\geq 1\)` (true) positive `\(\rightarrow\)` infection is present
+ 
+ - 0 test positive `\(\rightarrow\)` infection is absent OR infection is present, but no infected included in the sample
+
+--
+
+
+- Most of the time, the problem consists in **quantifying the probability that the infection is not present given that it has not been detected**
+
+--
+
+- The question can be formulated as: 
+
+ - **how sure are we that the infection is truly absent given that we did not find it?** or
+
+ - **what is the probability of a false negative surveillance outcome?**
+
+---
+## Exercise 1
+
+- Consider a large population in which 20% of animals are infected
+
+- 10 animals of this population are tested with a perfect test
+
+--
+
+- What are the probabilities of getting 0 to 10 positives among 10 animals tested?
+
+ - What is the statistical distribution to use?
+ 
+ - Which parameters?
+
+--
+
+- Assuming a large population, the probability of getting `\(Y = k\)` positive animals out of `\(n\)` animals tested when the disease prevalence is `\(\pi\)` follows a Binomial distribution:
+
+$$p(Y = k) \sim Binomial(n, \pi) $$
+
+---
+## Exercise 1
+
+- Consider a large population in which 20% of animals are infected
+
+- 10 animals of this population are tested with a perfect test
+
+- What are the probabilities of getting 0 to 10 positives among 10 animals tested?
+
+ - Write the R code to display and plot the results
+
+--
+
+
+```r
+dbinom(0:10, 10, .2)
+```
+
+```
+##  [1] 0.1073741824 0.2684354560 0.3019898880 0.2013265920 0.0880803840
+##  [6] 0.0264241152 0.0055050240 0.0007864320 0.0000737280 0.0000040960
+## [11] 0.0000001024
+```
+
+---
+## Exercise 1
+
+- Consider a large population in which 20% of animals are infected
+
+- 10 animals of this population are tested with a perfect test
+
+- What are the probabilities of getting 0 to 10 positives among 10 animals tested?
+
+ - Write the R code to display and plot the results
+
+
+```r
+barplot(dbinom(0:10, 10, .2))
+```
+
+![](Session_1_files/figure-html/unnamed-chunk-2-1.png)&lt;!-- --&gt;
+
+---
+## Exercise 1
+
+
+
+```r
+barplot(dbinom(0:10, 10, .2),
+        names.arg = 0:10,
+        xlab = "Number of test positives out of 10 animals tested")
+```
+
+![](Session_1_files/figure-html/unnamed-chunk-3-1.png)&lt;!-- --&gt;
+
+---
+## Exercise 2
+
+- Compare what happens when:
+
+ - 10 animals sampled / disease prevalence is 20%
+ - 20 animals sampled / disease prevalence is 20%
+ - 10 animals sampled / disease prevalence is 1%
+ - 20 animals sampled / disease prevalence is 1%
+
+---
+## Exercise 2
+
+
+```r
+par(mfrow = c(2, 2))
+# n = 10, p = 20%
+barplot(dbinom(0:10, 10, .2),
+        names.arg = 0:10,
+        xlab = "Number of test positives out of 10 animals tested",
+        main = "Prevalence = 20%")
+# n = 20, p = 20%
+barplot(dbinom(0:10, 20, .2),
+        names.arg = 0:10,
+        xlab = "Number of test positives out of 20 animals tested",
+        main = "Prevalence = 20%")
+# n = 10, p = 1%
+barplot(dbinom(0:10, 10, .01),
+        names.arg = 0:10,
+        xlab = "Number of test positives out of 10 animals tested",
+        main = "Prevalence = 1%")
+# n = 20, p = 1%
+barplot(dbinom(0:10, 20, .01),
+        names.arg = 0:10,
+        xlab = "Number of test positives out of 20 animals tested",
+        main = "Prevalence = 1%")
+```
+
+---
+## Exercise 2
+
+![](Session_1_files/figure-html/unnamed-chunk-5-1.png)&lt;!-- --&gt;
+
+---
+## Exercise 3
+
+- What are the probabilities of (falsely) concluding that disease is absent when:
+ - 10 animals sampled / disease prevalence is 20%
+ - 20 animals sampled / disease prevalence is 20%
+ - 10 animals sampled / disease prevalence is 1%
+ - 20 animals sampled / disease prevalence is 1%
+
+--
+
+
+```r
+dbinom(0, 10, .2)
+```
+
+```
+## [1] 0.1073742
+```
+
+```r
+dbinom(0, 20, .2)
+```
+
+```
+## [1] 0.01152922
+```
+
+```r
+dbinom(0, 10, .01)
+```
+
+```
+## [1] 0.9043821
+```
+
+```r
+dbinom(0, 20, .01)
+```
+
+```
+## [1] 0.8179069
+```
+
+---
+## Key messages
+
+- Finding out whether a disease is present in a population involves sampling animals from this population
+
+--
+
+- From a disease freedom perspective, the most problematic situation is when the population is declared free when the disease is in fact present
+ - False negatives `\(\rightarrow\)` lack of sensitivity of surveillance
+
+--
+ 
+- Surveillance can have a poor sensitivity because of the sampling scheme, even if the test used has a perfect sensitivity for the detection of diseased individuals
+
+--
+
+- Surveillance sensitivity `\(\nearrow\)` when:
+
+ - sample size `\(\nearrow\)`
+ 
+ - prevalence `\(\nearrow\)`
+ 
+ 
+---
+class: inverse, center, middle
+
+# Proving absence
+
+---
+class: inverse, center, middle
+![](figs/black_swans_popper.jpg)
+
+
+---
+## Proving absence
+
+- So far, we have posed the problem as finding a certain number of positives in our sample given a disease prevalence and a sample size:
+
+`$$p(Y = k | n, \pi)$$`
+
+--
+
+- In this case, the sensitivity of surveillance can be seen as the probability of finding at least one positive:
+
+`$$SSe =  1 - p(Y = 0 |n, \pi)$$`
+
+--
+
+- The specificity of surveillance is usually not a problem because all positive test results will be re-tested until either being confirmed as true positives or shown to be false positives
+
+$$SSp = p(Y = 0 | \pi = 0) = 1 $$
+
+--
+
+- But when we want to prove that a disease is absent, we do not know the actual prevalence. We usually *hope* that it is 0. What we would like to know is:
+
+`$$p(\pi = 0|n, k)$$`
+
+- How to proceed?
+ 
+---
+## Proving absence
+
+- Chosen approach: use of a **design prevalence**
+
+--
+
+- Principle:
+
+ - Assume that the disease is present at some chosen prevalence `\(\pi_t\)`, called the *design prevalence*
+ 
+ - Make hypotheses that can be tested from this design prevalence
+
+ `$$H_o: \pi \geq \pi_t$$`
+ `$$H_A: \pi &lt; \pi_t$$`
+ 
+--
+ 
+ - Construct confidence intervals, estimate probabilities of error from these hypotheses
+
+![](Session_1_files/figure-html/unnamed-chunk-7-1.png)&lt;!-- --&gt;
+
+---
+class: inverse, center, middle
+
+# Surveillance outputs
+
+---
+## Surveillance outputs
+
+- In most cases where the objective is to prove freedom, surveillance will yield no positive test results
+
+--
+
+- Various outputs can be estimated from this:
+
+ - Sensitivity of surveillance
+ 
+ - Probability of freedom from infection
+ 
+ - Expected cost of error
+ 
+ - (Specificity of surveillance)
+ 
+ - `\(\ldots\)`
+
+--
+
+- It is important that these outputs can be compared, because the aim is usually to prove to partners that it is safe to trade with you
+
+`\(\Rightarrow\)` **output-based surveillance**
+
+---
+## Output-based standards
+
+- Considering the true disease status and the outcome of surveillance:
+
+![](Session_1_files/figure-html/unnamed-chunk-8-1.png)&lt;!-- --&gt;
+
+---
+## Specificity of surveillance
+
+- Probability of a negative surveillance outcome when the infection is absent (true negative):
+
+ `$$SSp = p(O^-|D^-)$$`
+
+ - Usually assumed to be 1 (i.e. no false positive) `\(\rightarrow\)` every positive test will be investigated until either proven to be a false positive or confirmed as a true positive
+ 
+![](Session_1_files/figure-html/unnamed-chunk-9-1.png)&lt;!-- --&gt;
+
+---
+## Sensitivity of surveillance
+
+- Probability of a positive surveillance outcome when the infection is present (at the design prevalence)
+
+ `$$SSe = p(O^+|D^+)$$`
+
+![](Session_1_files/figure-html/unnamed-chunk-10-1.png)&lt;!-- --&gt;
+
+---
+## Probability of freedom from infection
+
+- Probability that the infection is absent when the outcome of surveillance is negative
+
+  `$$P_{free} = p(D^-|O^-)$$`
+
+
+![](Session_1_files/figure-html/unnamed-chunk-11-1.png)&lt;!-- --&gt;
+
+- is in fact the negative predictive value
+
+  `$$P_{free} = \frac{SSp.(1 - \pi_t)}{SSp.(1 - \pi_t) + (1-SSe) . \pi_t}$$`
+  
+---
+## Probability of freedom from infection
+
+- Probability that the infection is absent when the outcome of surveillance is negative
+
+  `$$P_{free} = p(D^-|O^-)$$`
+
+
+![](Session_1_files/figure-html/unnamed-chunk-12-1.png)&lt;!-- --&gt;
+
+- since `\(SSp = 1\)`, can be written as:
+
+  `$$P_{free} = \frac{1 - \pi_t}{1-SSe.\pi_t}$$`
+
+---
+## Expected cost of error
+
+- Estimation of the cost of undetected infections
+
+ `$$ECE = (1 - P_{free}) . Cost_{error}$$`
+ 
+- Can be used to justify the total cost of surveillance
+
+ `$$TSC = Cost_{surveillance}+(1 - P_{free}).Cost_{error}$$`
+
+--
+- Who is paying?
+
+ - Cost for the seller or buyer?
+
+ - Spread of infection, public health, lost markets `\(\ldots\)`
+
+
+---
+## Other outputs
+
+- More recently, indicators of early detection considered, although not strictly related to infection freedom
+
+ - Influence on the cost of error `\(\rightarrow\)` the longer the time between introduction of infection, the higher the resulting costs
+
+&lt;img src="figs/outputs.png"
+     width="950px" height="450px"&gt;
+
+
+---
+class: inverse, center, middle
+
+# Imperfect tests
+ 
+---
+## Exercise 4
+
+- Consider:
+ - a sample of 100 animals 
+ - with a population disease prevalence of 2%
+ - a test with an animal-level sensitivity of 50% and a specificity of 100%
+ 
+- What is the expected number of animals in each of the cells of the table below?
+&lt;br&gt;&lt;br&gt;&lt;br&gt;&lt;br&gt;
+
+&lt;img src="Session_1_files/figure-html/unnamed-chunk-13-1.png" width="400" height="200" style="display: block; margin: auto;" /&gt;
+
+---
+## Exercise 4
+
+- Consider:
+ - a sample of 100 animals 
+ - with a population disease prevalence of 2%
+ - a test with an animal-level sensitivity of 50% and a specificity of 100%
+ 
+- What is the expected number of animals in each of the cells of the table below?
+&lt;br&gt;&lt;br&gt;&lt;br&gt;&lt;br&gt;
+
+&lt;img src="Session_1_files/figure-html/unnamed-chunk-14-1.png" width="400" height="200" style="display: block; margin: auto;" /&gt;
+
+---
+## Exercise 4
+
+- For filling the table, you can use the following formulas:
+
+&lt;br&gt;&lt;br&gt;&lt;br&gt;
+
+&lt;img src="Session_1_files/figure-html/unnamed-chunk-15-1.png" width="800" height="225" style="display: block; margin: auto;" /&gt;
+
+---
+## Exercise 4
+
+- How would you define the sensitivity of surveillance?
+
+--
+
+- **Sensitivity of surveillance:**
+
+ - Probability of `\(\geq\)` 1 or more positives out of the hundred animals tested, equivalently,
+ 
+ - 1 - Probability of getting 0 positives
+
+--
+
+- In R, write a piece of code that computes this sensitivity
+
+--
+
+
+```r
+1 - dbinom(0, 100, .01)
+```
+
+```
+## [1] 0.6339677
+```
+- We consider that the population is infected, so the 100 animals should be taken into account
+
+- Out of these 100 individuals, there should be on average one test positive `\(\rightarrow p = 0.01\)`
+
+- The binomial distribution gives us the probability of getting no positives, so we do not have to compute the probability of getting 1, 2, `\(\ldots\)` positives
+
+---
+## Some technical details
+
+- When the number of animals sampled is small compared to the size of the population of interest, the probability of getting `\(k\)` test positives out of `\(n\)` animals tested follows the Binomial distribution
+
+`$$p(Y = k) \sim Binomial(n, p)$$`
+
+- which is computed using the following formula:
+
+`$$p(Y = k) = \frac{n!}{k!(n-k)!} p^k(1-p)^{n-k}$$`
+
+- When `\(k = 0\)` this simplifies greatly
+
+`$$p(Y = 0) = (1-p)^{n}$$`
+
+- In our case, `\(p = Se.\pi\)`, therefore:
+
+`$$p(Y = 0) = (1-Se.\pi)^{n}$$`
+
+- and
+
+`$$SSe = 1 - (1-Se.\pi)^{n}$$`
+
+---
+## Some technical details
+
+- You can check that:
+
+
+```r
+1 - dbinom(0, 100, 0.01)
+```
+
+```
+## [1] 0.6339677
+```
+
+- is equal to
+
+
+```r
+1 - (1 - .5 * .02)^100
+```
+
+```
+## [1] 0.6339677
+```
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "github",
+"highlightLines": true,
+"countIncrementalSlides": false,
+"ratio": "16/9"
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+// add `data-at-shortcutkeys` attribute to <body> to resolve conflicts with JAWS
+// screen reader (see PR #262)
+(function(d) {
+  let res = {};
+  d.querySelectorAll('.remark-help-content table tr').forEach(tr => {
+    const t = tr.querySelector('td:nth-child(2)').innerText;
+    tr.querySelectorAll('td:first-child .key').forEach(key => {
+      const k = key.innerText;
+      if (/^[a-z]$/.test(k)) res[k] = t;  // must be a single letter (key)
+    });
+  });
+  d.body.setAttribute('data-at-shortcutkeys', JSON.stringify(res));
+})(document);
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

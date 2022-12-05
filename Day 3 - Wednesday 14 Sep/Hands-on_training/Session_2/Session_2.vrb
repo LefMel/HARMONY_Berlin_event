@@ -1,0 +1,8 @@
+\frametitle{Estimate probability of freedom from infection}
+\protect\hypertarget{estimate-probability-of-freedom-from-infection-1}{}
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{P\_freedom}\OtherTok{=}\NormalTok{(}\DecValTok{1}\SpecialCharTok{{-}}\NormalTok{p\_design)}\SpecialCharTok{/}
+\NormalTok{  ((}\DecValTok{1}\SpecialCharTok{{-}}\NormalTok{p\_design)}\SpecialCharTok{+}\NormalTok{p\_design}\SpecialCharTok{*}\NormalTok{(}\DecValTok{1}\SpecialCharTok{{-}}\NormalTok{Overall\_SSE))}
+\end{Highlighting}
+\end{Shaded}

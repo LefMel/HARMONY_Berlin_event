@@ -1,3 +1,0 @@
-Session 4
-
-Multi-tests Multi-population models - Ajdusting for conditional dependence between tests
