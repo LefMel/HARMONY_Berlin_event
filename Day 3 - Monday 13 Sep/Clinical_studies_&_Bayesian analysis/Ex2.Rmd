@@ -1,0 +1,328 @@
+---
+title: "Example 2"
+author: "Paolo Eusebi, Sonja Hartnack"
+date: '2022-09-13'
+output:
+  beamer_presentation:
+    pandoc_args:
+    - -t
+    - beamer
+    slide_level: 2
+  html_document: default
+  ioslides_presentation: default
+theme: metropolis
+aspectratio: 169
+colortheme: seahorse
+header-includes: \input{preamble} 
+params:
+  presentation: yes
+subtitle: PRO responder analysis 
+bibliography: references.bib
+---
+
+## PRO
+
+```{r setup, include=TRUE, echo=FALSE, warning=FALSE, comment=F}
+source("setup.R")
+source("functions.R") 
+```
+
+-   A patient-reported outcome (PRO) measure, one type of clinical endpoint, is any report on the status of a patient's health condition that comes directly from the patient.
+
+## PRO responder analysis
+
+-   Quantitative PRO measures ideally are analyzed on their original scale.
+
+-   Responder analyses are used to aid the interpretation of those primary analyses.
+
+-   Responder analysis is based on the determination of a threshold for meaningful improvement or deterioration.
+
+-   Between-group differences in responder proportions or percentages may be understood more intuitively than a difference in mean scores from rating scales.
+
+## Example
+
+-   Data from a randomized, double-blind, placebo-controlled, fexible-dose, sildenafl citrate (Viagra) trial in which men were randomized to receive sildenafl or placebo for 12 weeks
+
+-   Responder analyses performed on the six-item erectile function domain of the International Index of Erectile Function (IIEF; range: 1--30, higher scores are better), a PRO measure.
+
+-   The table below shows the unadjusted data of response by treatment where a responder is classifed as having had a normal erectile function, defined as a score on the erectile function domain above 25 (26 to 30) after 12 weeks of treatment.
+
+```{r, echo=FALSE}
+y <- c(54,
+       58, 
+       16, 
+       99)
+m <- matrix(y, nrow = 2)
+d <- as.data.frame(m) %>%
+  rownames_to_column() %>%
+  rename(Sildenafil=V1,
+         Placebo=V2,
+         Response=rowname) %>%
+  mutate(Response=ifelse(Response==1, "Yes", "No"))
+  
+d %>% kable()
+```
+
+## Example
+
+```{r, echo=FALSE}
+y <- c(54,
+       58, 
+       16, 
+       99)
+m <- matrix(y, nrow = 2)
+d <- as.data.frame(m) %>%
+  rownames_to_column() %>%
+  rename(Sildenafil=V1,
+         Placebo=V2,
+         Response=rowname) %>%
+  mutate(Response=ifelse(Response==1, "Yes", "No"))
+  
+d %>% kable()
+```
+
+-   The unadjusted proportion who responded with sildenafil was 0.48 (54/112), while the unadjusted proportion who responded with placebo was 0.14 (16/115).
+
+-   The estimated response ratio (RR) is 3.47 (95% CI=2.15 to 5.71).
+
+## Miscassification bias
+
+-   A validation study of the responder threshold found that the cutoff of 25 has a sensitivity of 0.97 and a specificity of 0.88.
+
+-   The table below shows the corresponding bias-corrected data of response by treatment according to well-known formulas. [@cappelleri2021]
+
+```{r, echo=FALSE}
+SeSild <- 0.97
+SePBO <- 0.97
+SpSild <- 0.88
+SpPBO <- 0.88
+
+y <- c((54*SpSild-58*(1-SpSild))/(SeSild+SpSild-1), 
+       (58*SeSild-54*(1-SeSild))/(SeSild+SpSild-1),
+       (16*SpPBO-99*(1-SpPBO))/(SePBO+SpPBO-1), 
+       (99*SePBO-16*(1-SePBO))/(SePBO+SpPBO-1))
+m <- round(matrix(y, nrow = 2),1)
+d <- as.data.frame(m) %>%
+  rownames_to_column() %>%
+  rename(Sildenafil=V1,
+         Placebo=V2,
+         Response=rowname) %>%
+  mutate(Response=ifelse(Response==1, "Yes", "No"))
+  
+d %>%
+  kable()
+```
+
+-   The adjusted proportion who responded with sildenafil was 0.43 (47.7/112), while the adjusted proportion who responded with placebo was 0.02 (2.6/115).
+
+-   The estimated RR is 18.84.
+
+## Miscassification again!
+
+-   The estimated adjusted response ratio of 18.84 was much higher than the estimated unadjusted response ratio of 3.47.
+
+-   Cappelleri and Chambers assume that responder status is measured with an imperfect tool, but that the sensitivity and specificity of the tool are precise, and that they contribute to the adjusted table without margins of uncertainty.
+
+-   In reality, the original study provided uncertainty estimates for sensitivity (95% CI=0.95 to 0.98) and specificity (95% CI=0.80 to 0.93).
+
+## Prior calibration
+
+A convenient way to include measure of uncertainty is to use a Bayesian framework of inference.
+
+```{r}
+logit_Se_mu <- logit(0.97)
+logit_Se_sd <- 0.27
+logit_Se_tau0 <- 1/(logit_Se_sd^2)
+theta_Se <- rnorm(100000, mean=logit_Se_mu, sd=logit_Se_sd)
+Se <- exp(theta_Se)/(1+exp(theta_Se))
+round(quantile(Se, c(0.025, 0.5, 0.975)), 2)
+
+logit_Sp_mu <- logit(0.88)
+logit_Sp_sd <- 0.31
+logit_Sp_tau0 <- 1/(logit_Sp_sd^2)
+theta_Sp <- rnorm(100000, mean=logit_Sp_mu, sd=logit_Sp_sd)
+Sp <- exp(theta_Sp)/(1+exp(theta_Sp))
+round(quantile(Sp, c(0.025, 0.5, 0.975)), 2)
+```
+
+## Prior calibration
+```{r, warning=FALSE}
+r = -0.1
+y <- rmvnorm(
+  n = 10000,
+  mean = c(logit_Se_mu, logit_Sp_mu),
+  sigma = matrix(
+    c(logit_Se_sd, -r,
+      -r,          logit_Sp_sd),
+    nrow = 2,
+    byrow = T
+  )
+)
+```
+## Prior calibration
+```{r, echo=FALSE, warning=FALSE, out.width = "80%"}
+y <- y %>%
+  as_tibble() %>%
+  rename(logitSe=V1, logitSp=V2)
+
+# x <- matrix(c(seq(-3, 6, len=100),
+#               seq(-3, 6, len=100)), ncol=2)
+
+df <- data.frame(Se, Sp)
+
+ggplot(data=df, aes(x=Se, y=Sp)) +
+  geom_bin_2d(bins=100) +
+  coord_cartesian(xlim=c(0.5,1), ylim=c(0.5,1)) +
+  theme(legend.title = element_blank())
+```
+
+## Model
+
+```{r, echo=FALSE}
+y <- c(54,
+       58, 
+       16, 
+       99)
+y <- matrix(y, nrow = 2, byrow = T)
+
+N <- apply(y, 1, sum)
+
+m <- 2
+```
+
+```{r}
+bm_nondif <- " model {
+for (i in 1:m) {
+# likelihood
+                y[i,1] ~ dbin(prob[i], N[i])
+                prob[i] <- pi[i]*Se + (1-pi[i])*(1-Sp)
+}
+A <- N[1] * pi[1]; C <- N[1] * (1-pi[1])
+B <- N[2] * pi[2]; D <- N[2] * (1-pi[2])
+# priors for prevalence parameters
+                pi[1] ~ dbeta(1,1)
+                pi[2] ~ dbeta(1,1)
+# priors for sens and spec
+logit_Se ~ dnorm(logit_Se_mu, logit_Se_tau0)
+Se <- exp(logit_Se)/(1+exp(logit_Se))
+logit_Sp ~ dnorm(logit_Sp_mu, logit_Sp_tau0)
+Sp <- exp(logit_Sp)/(1+exp(logit_Sp))
+RR = pi[1]/pi[2]
+#data# m, N, y, logit_Se_mu, logit_Sp_mu, logit_Se_tau0, logit_Sp_tau0
+#inits#
+#monitor# Se, Sp, pi, RR, A, C, B, D 
+}"
+```
+
+```{r, echo=FALSE}
+bm_perf <- " model {
+for (i in 1:m) {
+                # likelihood
+                y[i,1] ~ dbin(pi[i], N[i])
+}
+
+A <- N[1] * pi[1]
+C <- N[1] * (1-pi[1])
+B <- N[2] * pi[2]
+D <- N[2] * (1-pi[2])
+
+# priors for prevalence parameters
+                pi[1] ~ dbeta(1,1)
+                pi[2] ~ dbeta(1,1)
+
+
+RR = pi[1]/pi[2]
+#data# m, N, y
+#inits#
+#monitor# pi, RR, A, C, B, D
+}
+"
+```
+
+## Results: bias-adjusted
+
+```{r, echo=FALSE, warning=FALSE}
+res_bm_nondif <- run.jags(
+  bm_nondif,
+  n.chains = 3,
+  burnin = 5000,
+  sample = 30000, 
+)
+
+round(summary(res_bm_nondif), 3) |>
+  kable()
+```
+
+## Results: unadjusted
+
+```{r, echo=FALSE, warning=FALSE}
+res_bm_perf <- run.jags(
+  bm_perf,
+  n.chains = 3,
+  burnin = 5000,
+  sample = 30000, 
+)
+
+round(summary(res_bm_perf), 3) |>
+  kable()
+```
+
+## Plots
+
+```{r, echo=FALSE, out.width = "80%"}
+theme_set(theme_pubr())
+theme_update(axis.title.x = element_blank(),
+             axis.title.y = element_text(size=12))
+
+pt <- ggplot(data = tibble(x = 0:1), aes(x)) +
+  stat_function(fun = dbeta, n = 101, args = list(1, 1)) +
+  labs(title = "Response in Sildenafil", 
+       y = "density") +
+  scale_y_continuous(labels = label_number(accuracy = 0.01),
+                     limits = c(0, 1))
+
+pc <- ggplot(data = tibble(x = 0:1), aes(x)) +
+  stat_function(fun = dbeta, n = 101, args = list(1, 1)) +
+  labs(title = "Response in Placebo", 
+       y = "density") +
+  scale_y_continuous(labels = label_number(accuracy = 0.01),
+                     limits = c(0, 1))
+
+se <- ggplot(data = tibble(x = 0:1), aes(x)) +
+  stat_function(fun = function(x) (dnorm(logit(x), mean = logit_Se_mu, sd=logit_Se_sd)), n = 1e06) +
+  labs(title = "Sensitivity", 
+       y = "density") +
+  scale_y_continuous(labels = label_number(accuracy = 0.01))
+
+sp <- ggplot(data = tibble(x = 0:1), aes(x)) +
+  stat_function(fun = function(x) inv_logit(dnorm(logit(x), mean = logit_Sp_mu, sd=logit_Sp_sd)), n = 1e06) +
+  labs(title = "Specificity", 
+       y = "density") +
+  scale_y_continuous(labels = label_number(accuracy = 0.01))
+
+fig1 <- ggarrange(pt, pc, se, sp,
+                    # labels = c("A", "B", "C", "D"),
+                    ncol = 2, nrow = 2)
+fig1
+```
+
+## Posterior: bias-adjusted (black) vs. unadjusted (grey)
+
+```{r, echo=FALSE, out.width = "70%"}
+d_b <- res_bm_nondif$mcmc[[3]] %>% 
+  as.data.frame() %>%
+  mutate(logRR=log(RR))
+
+d_p <- res_bm_perf$mcmc[[3]] %>% 
+  as.data.frame() %>%
+  mutate(logRR=log(RR))
+
+fig2 <- ggplot() +
+  geom_density(data = d_b, aes(x=logRR), col="black") +
+  geom_density(data = d_p, aes(x=logRR), col="grey") +
+  labs(title = "", x="log RR") +
+  scale_y_continuous(labels = label_number(accuracy = 0.01))
+fig2
+```
+
+## References

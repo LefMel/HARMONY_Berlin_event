@@ -1,0 +1,411 @@
+---
+title: "Example 1"
+author: "Paolo Eusebi, Sonja Hartnack"
+date: '2022-09-13'
+output:
+  beamer_presentation:
+    pandoc_args:
+    - -t
+    - beamer
+    slide_level: 2
+  html_document: default
+  ioslides_presentation: default
+theme: metropolis
+aspectratio: 169
+colortheme: seahorse
+header-includes: \input{preamble} 
+params:
+  presentation: yes
+subtitle: Vaccine effectiveness
+bibliography: references.bib
+---
+
+
+## TND studies on vaccine effectiveness
+```{r setup, include=TRUE, echo=FALSE, warning=FALSE, comment=F}
+source("setup.R")
+source("functions.R") 
+```
+
+-   The objective of a TND study is to assess the effectiveness of vaccines by comparing the odds of testing positive among vaccinated patients with the odds of positive testing among unvaccinated patients.
+
+## A TND study on Covid-19 effectiveness
+
+A TND study conducted in Ontario, Canada, [@chung2021] investigated the effectiveness of mRNA Covid-19 vaccines (bnt162b2 and mrna-1273) against symptomatic SARS-CoV-2 infection.
+
+```{r, echo=FALSE}
+y <- matrix(
+  c(51220, 251541, 57, 3817),
+  nrow = 2,
+  byrow = T,
+  dimnames = list(c("V-", "V+"), c("T+", "T-"))
+)
+y %>%
+  kable()
+```
+
+$$OR=\frac{57/3817}{51220/251541}=0.073$$
+
+$$VE=(1-OR)\cdot 100=92.7\%$$
+
+## TND studies on vaccine effectiveness
+
+-   If a perfect diagnostic assay is available (i.e. sensitivity and specificity equal to 1), we can assume that the results of the test follow an independent binomial sampling distribution for both unvaccinated ($V-$) or vaccinated ($V+$) sub-groups:
+
+$$y_{V_{+}} \sim Bin(n_{V_{+}}, p_{V_{+}})$$ $$y_{V_{-}} \sim Bin(n_{V_{-}}, p_{V_{-}})$$
+
+## TND studies on vaccine effectiveness
+
+-   The Odds Ratio (OR) and the Vaccine Effectiveness (VE) are defined as follows:
+
+$$OR=\frac{p_{V+} /(1-p_{V+})}{p_{V-} /(1-p_{V-})}$$
+$$VE=(1-OR) \cdot 100$$
+
+## Bayesian modeling for addressing misclassification bias
+
+-   In the simple case of nondifferential misclassification bias, the following relationships hold:
+
+$$Se_{V_{+}}=Se_{V_{-}}=Se$$
+$$Sp_{V_{+}}=Sp_{V_{-}}=Sp$$
+
+## Bayesian modeling for addressing misclassification bias
+
+-   We can therefore assume that for each of the two sub-groups (vaccinated and unvaccinated) the results of the test follow an independent binomial sampling distribution:
+
+$$y_{*V_{+}} \sim Bin(n_{*V_{+}}, p_{*V_{+}})$$ $$y_{*V_{-}} \sim Bin(n_{*V_{-}}, p_{*V_{-}})$$
+
+with
+
+$$p_{*V_{+}} = p_{V_{+}} \cdot Se +  (1-p_{V_{+}}) \cdot (1-Sp)$$
+$$p_{*V_{-}} = p_{V_{-}} \cdot Se +  (1-p_{V_{-}}) \cdot (1-Sp)$$
+
+## Bayesian modeling for addressing misclassification bias
+
+-   This model is over-parameterized with four parameters ($p_{V_{+}}, p_{V_{-}}, Se, Sp$) but only two independent pieces of information provided by the data, i.e. the apparent prevalences in the vaccinated ($y_{V_{+}}/n_{V_{+}}$) and unvaccinated ($y_{V_{-}}/n_{V_{-}}$) sub-groups.
+
+-   As such, these models are only of practical use within a Bayesian framework of inference, as this allows for prior information on diagnostic test characteristics (sensitivty and specificity) to be used along with the observed data.
+
+```{r, echo=FALSE}
+y <- matrix(
+  c(51220, 251541, 57, 3817),
+  nrow = 2,
+  byrow = T,
+  dimnames = list(c("V-", "V+"), c("T+", "T-"))
+)
+N <- apply(y, 1, sum)
+```
+
+## Bayesian model assuming perfect classification
+
+```{r}
+bm_1t_perf <- " model {
+    for (i in 1:2) {
+  # likelihood
+    y[i,1] ~ dbin(pi[i], N[i])
+  # priors for prevalence parameters
+    pi[i] ~ dbeta(2,2)}
+  # Computing OR/VE
+    OR <- (pi[2]/(1-pi[2])) / (pi[1]/(1-pi[1]))
+    VE <- (1-OR)*100
+  #data# N, y
+  #inits# 
+  #monitor# pi, OR, VE
+  }"
+```
+
+## Bayesian model for non-differential misclassification
+
+```{r}
+bm_1t_nondif <- " model {
+    for (i in 1:2) {
+  # likelihood
+    y[i,1] ~ dbin(prob[i], N[i])
+    prob[i] <- pi[i]*Se + (1-pi[i])*(1-Sp)
+  # priors for prevalence parameters
+    pi[i] ~ dbeta(2,2)}
+  # priors for Se and Sp
+    Se~dbeta(HPSe[1], HPSe[2])
+    Sp~dbeta(HPSp[1], HPSp[2])
+  # Computing OR/VE
+    OR <- (pi[2]/(1-pi[2])) / (pi[1]/(1-pi[1]))
+    VE <- (1-OR)*100
+  #data# N, y, HPSe, HPSp
+  #inits# 
+  #monitor# Se, Sp, pi, OR, VE
+  }"
+```
+
+## Gibbs sampling set-up
+
+```{r}
+inits1 <- list(".RNG.name" = "base::Mersenne-Twister", ".RNG.seed" = 100022)
+inits2 <- list(".RNG.name" = "base::Mersenne-Twister", ".RNG.seed" = 300022)
+
+n_thin <- 25
+n_burnin <- 50000
+n_samples <- 100000
+```
+
+## Model 1: perfect classification
+
+```{r, warning=FALSE}
+res_perfect <- run.jags(
+  bm_1t_perf,
+  n.chains = 2,
+  inits = list(inits1, inits2),
+  burnin = n_burnin,
+  sample = n_samples,
+  thin = n_thin
+)
+
+round(summary(res_perfect), 3) |>
+  kable()
+```
+
+## Model 1: perfect classification
+
+```{r, echo=FALSE}
+plot(
+  res_perfect,
+  plot.type = c("histogram"),
+  vars = c("pi", "OR", "VE"),
+  layout = c(2, 2)
+)
+```
+
+## Model 1: perfect classification
+
+```{r, echo=FALSE}
+plot(
+  res_perfect,
+  plot.type = c("trace"),
+  vars = c("pi", "OR", "VE"),
+  layout = c(2, 2)
+)
+```
+
+## Model 1: perfect classification
+
+```{r, echo=FALSE}
+plot(
+  res_perfect,
+  plot.type = c("autocorr"),
+  vars = c("pi", "OR", "VE"),
+  layout = c(2, 2)
+)
+```
+
+## Model 2: sensitivity and specificity from Kostoulas et al. (2021)
+
+-   Kostoulas and colleagues [@kostoulas2021] used a Bayesian latent class model to estimate the diagnostic accuracy of RT-PCR and lateral flow immunoassay tests for Covid-19.
+
+-   The sensitivity of RT-PCR was 0.68 (95% PrI=0.63-0.73), while the specificity was 0.99 (95% PrI=0.98-1.00).
+
+-   We plugged-in this prior information in our model by using
+
+$$Sensitivity \sim Beta(226.16, 105.93)$$
+
+$$Specificity \sim Beta(606.34, 6.45)$$
+
+## Model 2: sensitivity and specificity from Kostoulas et al. (2021)
+
+```{r, fig.width=12, fig.height=18}
+HPSe <- findbetaqq2(
+  percentile.value1 = 0.63,
+  percentile1 = 0.025,
+  percentile.value2 = 0.73,
+  percentile2 = 0.975
+)
+HPSe
+
+
+HPSp <- findbeta2(
+    themedian = 0.99,
+    percentile = 0.975,
+    lower.v = FALSE,
+    percentile.value = 0.98
+  )
+HPSp
+```
+
+## Model 2: sensitivity and specificity from Kostoulas et al. (2021)
+
+```{r, echo=FALSE, warning=FALSE}
+res_kostoulas <- run.jags(
+  bm_1t_nondif,
+  n.chains = 2,
+  inits = list(inits1, inits2),
+  burnin = n_burnin,
+  sample = n_samples,
+  thin = n_thin
+)
+round(summary(res_kostoulas), 3) |>
+  kable()
+```
+
+## Model 2: sensitivity and specificity from Kostoulas et al. (2021)
+
+```{r, echo=FALSE}
+plot(
+  res_kostoulas,
+  plot.type = c("histogram"),
+  vars = c("Se", "Sp", "pi", "OR", "VE"),
+  layout = c(2, 3)
+)
+```
+
+## Model 2: sensitivity and specificity from Kostoulas et al. (2021)
+
+```{r, echo=FALSE}
+plot(
+  res_kostoulas,
+  plot.type = c("trace"),
+  vars = c("Se", "Sp", "pi", "OR", "VE"),
+  layout = c(2, 3)
+)
+```
+
+## Model 2: sensitivity and specificity from Kostoulas et al. (2021)
+
+```{r, echo=FALSE}
+plot(
+  res_kostoulas,
+  plot.type = c("autocorr"),
+  vars = c("Se", "Sp", "pi", "OR", "VE"),
+  layout = c(2, 3)
+)
+```
+
+## Model 3: sensitivity and specificity from Staerk et al. (2022)
+
+-   A recent report using Danish registries data used a Bayesian latent class model to estimate the diagnostic accuracy of RT-PCR and antigen tests for Covid-19. [@stærk-østergaard2022]
+
+-   The specificity of RT-PCR was estimated to be close to 1.00.
+
+-   The sensitivity estimates were 0.957 (95% PrI=0.928-0.984).
+
+-   We plugged-in this prior information in our model by using: $$Sensitivity \sim Beta(3040.61, 3.64)$$
+
+$$Specificity \sim Beta(168.66, 6.84)$$
+
+## Model 3: sensitivity and specificity from Staerk et al. (2022)
+
+```{r, fig.width=12, fig.height=18}
+# Sp
+HPSp <- findbetaqq2(
+  percentile.value1 = 0.9973,
+  percentile1 = 0.025,
+  percentile.value2 = 0.9997,
+  percentile2 = 0.975)
+HPSp
+round(qbeta(c(0.025, 0.5, 0.975), HPSp[1], HPSp[2]), 4)
+# Se
+HPSe <- findbetaqq2(
+  percentile.value1 = 0.9279,
+  percentile1 = 0.025,
+  percentile.value2 = 0.9843,
+  percentile2 = 0.975)
+HPSe
+round(qbeta(c(0.025, 0.5, 0.975), HPSe[1], HPSe[2]), 4)
+```
+
+## Model 3: sensitivity and specificity from Staerk et al. (2022)
+
+```{r, echo=FALSE, warning=FALSE}
+res_staerk <- run.jags(
+  bm_1t_nondif,
+  n.chains = 2,
+  inits = list(inits1, inits2),
+  burnin = n_burnin,
+  sample = n_samples,
+  thin = n_thin
+)
+
+round(summary(res_staerk), 3) |>
+  kable()
+```
+
+## Model 3: sensitivity and specificity from Staerk et al. (2022)
+
+```{r, echo=FALSE, warning=FALSE}
+plot(
+  res_staerk,
+  plot.type = c("histogram"),
+  vars = c("Se", "Sp", "pi", "OR", "VE"),
+  layout = c(2, 3)
+)
+```
+
+## Model 3: sensitivity and specificity from Staerk et al. (2022)
+
+```{r, echo=FALSE, warning=FALSE}
+plot(
+  res_staerk,
+  plot.type = c("trace"),
+  vars = c("Se", "Sp", "pi", "OR", "VE"),
+  layout = c(2, 3)
+)
+```
+
+## Model 3: sensitivity and specificity from Staerk et al. (2022)
+
+```{r, echo=FALSE, warning=FALSE}
+plot(
+  res_staerk,
+  plot.type = c("autocorr"),
+  vars = c("Se", "Sp", "pi", "OR", "VE"),
+  layout = c(2, 3)
+)
+```
+
+## Posterior: vaccine effectiveness
+
+```{r, echo=FALSE, out.width = "70%"}
+d_s_1 <- res_staerk$mcmc[[1]] %>% 
+  as.data.frame() %>%
+  select(VE) %>%
+  mutate(model="Staerk 2022")
+
+d_k_1 <- res_kostoulas$mcmc[[1]] %>% 
+  as.data.frame() %>%
+  select(VE) %>%
+  mutate(model="Kostoulas 2021")
+
+d_p_1 <- res_perfect$mcmc[[1]] %>% 
+  as.data.frame() %>%
+  select(VE) %>%
+  mutate(model="Unadjasted")
+
+d_s_2 <- res_staerk$mcmc[[2]] %>% 
+  as.data.frame() %>%
+  select(VE) %>%
+  mutate(model="Staerk 2022")
+
+d_k_2 <- res_kostoulas$mcmc[[2]] %>% 
+  as.data.frame() %>%
+  select(VE) %>%
+  mutate(model="Kostoulas 2021")
+
+d_p_2 <- res_perfect$mcmc[[2]] %>% 
+  as.data.frame() %>%
+  select(VE) %>%
+  mutate(model="Unadjasted")
+
+d <- rbind(d_s_1, d_k_1, d_p_1, d_s_2, d_k_2, d_p_2)
+
+fig2 <- ggplot(data = d, aes(x=VE,col=model)) +
+  geom_density() +
+  labs(title = "", x="VE") +
+  scale_y_continuous(labels = label_number(accuracy = 0.01))
+fig2
+```
+
+## Preprint and code
+
+Addressing Misclassification Bias in Vaccine Effectiveness Studies with an Application to Covid-19 [@eusebi2022]
+
+<https://www.researchsquare.com/article/rs-1799561/v1>
+
+<https://github.com/paoloeusebi/tnd-vaccine-effectiveness/>
+
+## References  {.allowframebreaks}
